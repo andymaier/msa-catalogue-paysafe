@@ -22,15 +22,17 @@ public class ShopListener {
 	public void listen(Operation op) throws Exception {
 		System.out.println("op = " + op);
 
-		Article article = mapper.treeToValue(op.getObject(), Article.class);
+		if(op.getBo().equals("article")) {
+			Article article = mapper.treeToValue(op.getObject(), Article.class);
 
-		switch (op.getAction()) {
-			case "upsert":
-				repo.save(article);
-				break;
-			case "delete":
-				repo.delete(article);
-				break;
+			switch (op.getAction()) {
+				case "upsert":
+					repo.save(article);
+					break;
+				case "delete":
+					repo.delete(article);
+					break;
+			}
 		}
 	}
 }
