@@ -8,6 +8,7 @@ import de.predi8.catalogue.model.Article;
 import de.predi8.catalogue.repository.ArticleRepository;
 import java.math.BigDecimal;
 import java.util.UUID;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -61,8 +62,10 @@ public class CatalogueRestController {
     String uuid = UUID.randomUUID().toString();
     article.setUuid(uuid);
 
-    Article save = repo.save(article);
-    return ResponseEntity.created(builder.path("/articles/" + uuid).build().toUri()).body(save);
+    writeToTheBus(article);
+
+    //Article save = repo.save(article);
+    return ResponseEntity.created(builder.path("/articles/" + uuid).build().toUri()).body(article);
   }
 
   @PutMapping("/{id}")
@@ -70,12 +73,23 @@ public class CatalogueRestController {
     get(id);
 
     article.setUuid(id);
-    repo.save(article);
+    //repo.save(article);
+
+    writeToTheBus(article);
+
+  }
+
+  private void writeToTheBus(@RequestBody Article article) {
+    Operation op = new Operation("article", "upsert", mapper.valueToTree(article));
+    kafka.send(new ProducerRecord<>("shop", op));
   }
 
   @DeleteMapping("/{id}")
   public void delete(@PathVariable String id) {
-    repo.delete(get(id));
+    Article article = get(id);
+
+    Operation op = new Operation("article", "delete", mapper.valueToTree(article));
+    kafka.send(new ProducerRecord<>("shop", op));
   }
 
   @PatchMapping("/{id}")
@@ -90,6 +104,6 @@ public class CatalogueRestController {
       old.setName(jsonNode.get(NAME).asText());
     }
 
-    repo.save(old);
+    writeToTheBus(old);
   }
 }
